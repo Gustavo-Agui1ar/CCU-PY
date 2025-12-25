@@ -1,7 +1,7 @@
 import flet as ft
 
 from styles.theme import apply_theme
-from views.relatorio_view import home_view
+from views.relatorio_view import relatorio_view
 from views.configs_view import configuracoes_view
 
 def main(page: ft.Page):
@@ -12,7 +12,7 @@ def main(page: ft.Page):
 
     def trocar_view(index: int):
         if index == 0:
-            content.content = home_view(page)
+            content.content = relatorio_view(page)
         elif index == 1:
             content.content = configuracoes_view(page)
         page.update()

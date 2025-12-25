@@ -7,17 +7,20 @@ Library    Dialogs
 *** Variables ***
 
 ${CONFIG}    None
-${DEBUG}    True
+${DEBUG}    False
 
 *** Keywords ***
 Carregar Configuracoes
-    ${json_text}=    Get File    configs/config.json
+    ${json_text}=    Get File    ${CURDIR}/../configs/config.json
     ${CONFIG}=    Evaluate    json.loads($json_text)    json
     Set Suite Variable    ${CONFIG}
 
+# Esperar Input Do Usuario
+#     ${mes_ano}=    Get Value From User    Digite o mês e ano no formato MM/YYYY para coletar as horas:
+#     RETURN    ${mes_ano}
+
 Esperar Input Do Usuario
-    ${mes_ano}=    Get Value From User    Digite o mês e ano no formato MM/YYYY para coletar as horas:
-    RETURN    ${mes_ano}
+    RETURN    12/2025
 
 Buscar Painel Com Mes e Ano
     [Arguments]    ${mes_ano}
