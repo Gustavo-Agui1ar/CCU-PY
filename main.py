@@ -1,7 +1,7 @@
 import flet as ft
 
 from styles.theme import apply_theme
-from views.home_view import home_view
+from views.relatorio_view import home_view
 from views.configs_view import configuracoes_view
 
 def main(page: ft.Page):
@@ -25,9 +25,9 @@ def main(page: ft.Page):
         label_type=ft.NavigationRailLabelType.ALL,
         destinations=[
             ft.NavigationRailDestination(
-                icon=ft.Icons.HOME_OUTLINED,
-                selected_icon=ft.Icons.HOME,
-                label="Home",
+                icon=ft.Icons.PICTURE_AS_PDF_OUTLINED,
+                selected_icon=ft.Icons.PICTURE_AS_PDF,
+                label="Relatório",
             ),
             ft.NavigationRailDestination(
                 icon=ft.Icons.SETTINGS_OUTLINED,

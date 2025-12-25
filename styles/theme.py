@@ -1,7 +1,7 @@
 import flet as ft
 
 def apply_theme(page: ft.Page):
-    page.theme_mode = ft.ThemeMode.LIGHT
+    page.theme_mode = ft.ThemeMode.DARK
     page.window_width = 1000
     page.window_height = 650
 

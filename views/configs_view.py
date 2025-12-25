@@ -1,13 +1,26 @@
 import flet as ft
+import flet.canvas as cv
 import json
 import os
+from PIL import Image, ImageDraw
 
 from styles.style import *
 
 CONFIG_PATH = "configs/config.json"
 
+W, H = 800, 200
+
+
+class SignatureState:
+    x: float | None = None
+    y: float | None = None
+    stroke: int = 2
+
+
 def configuracoes_view(page: ft.Page) -> ft.Control:
-    # -------- CAMPOS --------
+    # =========================================================
+    # CAMPOS BÁSICOS
+    # =========================================================
     url = ft.TextField(label="URL", width=FIELD_WIDTH)
     usuario = ft.TextField(label="Usuário", width=FIELD_WIDTH)
     senha = ft.TextField(
@@ -35,7 +48,127 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
 
     status = ft.Text()
 
-    # -------- FUNÇÕES --------
+    # =========================================================
+    # CONFIGURAÇÃO DE ASSINATURA
+    # =========================================================
+    assinatura_tipo = ft.RadioGroup(
+        value="canvas",
+        content=ft.Row(
+            controls=[
+                ft.Radio(value="canvas", label="Desenhada"),
+                ft.Radio(value="digitada", label="Digitada"),
+            ]
+        ),
+    )
+
+    assinatura_texto = ft.TextField(
+        label="Assinatura digitada",
+        width=FIELD_WIDTH,
+        visible=False,
+    )
+
+    # =========================================================
+    # ASSINATURA DESENHADA (CANVAS)
+    # =========================================================
+    sig_state = SignatureState()
+
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    def pan_start(e: ft.DragStartEvent):
+        sig_state.x = e.local_x
+        sig_state.y = e.local_y
+
+    def pan_update(e: ft.DragUpdateEvent):
+        if sig_state.x is None:
+            return
+
+        canvas.shapes.append(
+            cv.Line(
+                sig_state.x,
+                sig_state.y,
+                e.local_x,
+                e.local_y,
+                paint=ft.Paint(
+                    stroke_width=sig_state.stroke,
+                    color=ft.Colors.BLACK,
+                ),
+            )
+        )
+
+        draw.line(
+            (sig_state.x, sig_state.y, e.local_x, e.local_y),
+            fill="black",
+            width=sig_state.stroke,
+        )
+
+        sig_state.x = e.local_x
+        sig_state.y = e.local_y
+        canvas.update()
+
+    def limpar_assinatura(e):
+        canvas.shapes.clear()
+        canvas.shapes.append(cv.Fill(ft.Paint(color=ft.Colors.WHITE)))
+        img.paste((0, 0, 0, 0), (0, 0, W, H))
+        canvas.update()
+
+    def salvar_assinatura():
+        os.makedirs("results", exist_ok=True)
+        img.save("results/assinatura.png")
+
+    def mudar_espessura(e):
+        sig_state.stroke = int(e.control.value)
+
+    slider_espessura = ft.Slider(
+        min=1,
+        max=10,
+        value=2,
+        divisions=9,
+        label="{value}",
+        on_change=mudar_espessura,
+        width=300,
+    )
+
+    canvas = cv.Canvas(
+        shapes=[cv.Fill(ft.Paint(color=ft.Colors.WHITE))],
+        content=ft.GestureDetector(
+            on_pan_start=pan_start,
+            on_pan_update=pan_update,
+            drag_interval=10,
+        ),
+        width=W,
+        height=H,
+    )
+
+    assinatura_canvas = ft.Column(
+        controls=[
+            ft.Container(
+                content=canvas,
+                border=ft.border.all(2, ft.Colors.GREY),
+                border_radius=6,
+                width=W,
+                height=H,
+            ),
+            ft.Text("Espessura do traço"),
+            slider_espessura,
+            ft.OutlinedButton("Limpar assinatura", on_click=limpar_assinatura),
+        ],
+        visible=True,
+    )
+
+    # =========================================================
+    # CONTROLE DE VISIBILIDADE
+    # =========================================================
+    def on_tipo_assinatura_change(e):
+        assinatura_texto.visible = assinatura_tipo.value == "digitada"
+        assinatura_canvas.visible = assinatura_tipo.value == "canvas"
+        page.update()
+
+    assinatura_tipo.on_change = on_tipo_assinatura_change
+
+    # =========================================================
+    # CARREGAR CONFIGURAÇÃO
+    # =========================================================
     def carregar_config():
         if not os.path.exists(CONFIG_PATH):
             return
@@ -55,7 +188,20 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         arquivos = config.get("arquivos", {})
         csv_horas.value = arquivos.get("csv_horas", "")
 
+        assinatura = config.get("assinatura", {})
+        assinatura_tipo.value = assinatura.get("tipo", "canvas")
+        assinatura_texto.value = assinatura.get("texto", "")
+
+        assinatura_texto.visible = assinatura_tipo.value == "digitada"
+        assinatura_canvas.visible = assinatura_tipo.value == "canvas"
+
+    # =========================================================
+    # SALVAR CONFIGURAÇÃO
+    # =========================================================
     def salvar_config(e):
+        if assinatura_tipo.value == "canvas":
+            salvar_assinatura()
+
         config = {
             "url": url.value,
             "usuario": usuario.value,
@@ -67,7 +213,12 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
             },
             "arquivos": {
                 "csv_horas": csv_horas.value
-            }
+            },
+            "assinatura": {
+                "tipo": assinatura_tipo.value,
+                "texto": assinatura_texto.value if assinatura_tipo.value == "digitada" else "",
+                "arquivo": "results/assinatura.png",
+            },
         }
 
         os.makedirs("configs", exist_ok=True)
@@ -79,25 +230,41 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         status.style = STATUS_SUCCESS
         page.update()
 
-    # carregar dados ao abrir a view
+    # =========================================================
+    # INICIALIZA
+    # =========================================================
     carregar_config()
 
+    # =========================================================
+    # LAYOUT FINAL
+    # =========================================================
     return ft.Container(
         padding=PAGE_PADDING,
         content=ft.Column(
             spacing=20,
+            scroll=ft.ScrollMode.AUTO,
             controls=[
                 ft.Text("Configurações", style=TITLE_STYLE),
+
                 url,
                 usuario,
                 senha,
                 browser,
+
                 ft.Text("Timeouts", weight=ft.FontWeight.BOLD),
                 ft.Row(
                     spacing=20,
                     controls=[timeout_bloqueio, timeout_visibilidade],
                 ),
+
                 csv_horas,
+
+                ft.Divider(),
+                ft.Text("Assinatura", weight=ft.FontWeight.BOLD),
+                assinatura_tipo,
+                assinatura_texto,
+                assinatura_canvas,
+
                 ft.ElevatedButton(
                     "Salvar",
                     width=BUTTON_WIDTH,
