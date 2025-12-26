@@ -6,6 +6,9 @@ import os
 from styles.style import TITLE_STYLE, PAGE_PADDING
 
 
+BASE_WIDTH = 800
+PAGE_HEIGHT_ESTIMADA = int(BASE_WIDTH * 1.35)
+
 def relatorio_view(page: ft.Page) -> ft.Control:
 
     # ---------------- DIALOG ----------------
@@ -84,11 +87,27 @@ def relatorio_view(page: ft.Page) -> ft.Control:
     zoom = {"value": 1.0}
     BASE_WIDTH = 800
 
+    def update_page_counter(e: ft.ScrollEvent):
+        if not viewer_container.visible or not viewer_column.controls:
+            return
+
+        scroll_pos = e.pixels
+        page_size = PAGE_HEIGHT_ESTIMADA + viewer_column.spacing
+
+        current_page = int(scroll_pos // page_size) + 1
+        total = len(viewer_column.controls)
+
+        current_page = max(1, min(current_page, total))
+        contador_paginas.value = f"{current_page} / {total}"
+        page.update()
+
+
     viewer_column = ft.Column(
         spacing=30,
         scroll=ft.ScrollMode.AUTO,
         expand=True,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        on_scroll=update_page_counter,
     )
 
     viewer_container = ft.Container(
@@ -100,7 +119,8 @@ def relatorio_view(page: ft.Page) -> ft.Control:
         visible=False,
     )
 
-    contador_paginas = ft.Text("0 / 0")
+    contador_paginas = ft.Text("0 / 0", style=TITLE_STYLE)
+
 
     # ---------------- AÇÕES ----------------
 
@@ -151,6 +171,18 @@ def relatorio_view(page: ft.Page) -> ft.Control:
         if os.path.exists(pg.PDF_SAIDA):
             file_picker.get_directory_path()
 
+    def zoom_in(e):
+        zoom["value"] += 0.1
+        for container in viewer_column.controls:
+            container.width = int(BASE_WIDTH * zoom["value"])
+        page.update()
+
+    def zoom_out(e):
+        zoom["value"] = max(0.1, zoom["value"] - 0.1)
+        for container in viewer_column.controls:
+            container.width = int(BASE_WIDTH * zoom["value"])
+        page.update()
+
     # ---------------- TOOLBAR ----------------
 
     toolbar = ft.Container(
@@ -161,8 +193,8 @@ def relatorio_view(page: ft.Page) -> ft.Control:
             controls=[
                 ft.Row(
                     controls=[
-                        ft.IconButton(ft.Icons.ZOOM_OUT),
-                        ft.IconButton(ft.Icons.ZOOM_IN),
+                        ft.IconButton(ft.Icons.ZOOM_OUT, on_click=zoom_out),
+                        ft.IconButton(ft.Icons.ZOOM_IN, on_click=zoom_in),
                     ]
                 ),
                 contador_paginas,
