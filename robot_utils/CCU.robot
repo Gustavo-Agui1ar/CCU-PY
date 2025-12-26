@@ -25,6 +25,8 @@ Esperar Input Do Usuario
 Buscar Painel Com Mes e Ano
     [Arguments]    ${mes_ano}
 
+    Log To Console    STEP: Buscando mês
+    
     ${painel_texto}=    Get Text
     ...    xpath=//strong[@id="ccuAnoMesAtual"]
 
@@ -39,6 +41,7 @@ Buscar Painel Com Mes e Ano
     END
 
 Abrir Navegador E Logar
+    Log To Console    STEP: Logando na intranet
     IF    '${CONFIG["browser"]}' == 'chrome'
         ${options}=    Evaluate
         ...    sys.modules['selenium.webdriver'].ChromeOptions()    sys
@@ -71,9 +74,13 @@ Abrir Navegador E Logar
     Input Text      id=username    ${CONFIG["usuario"]}
     Input Password  id=password    ${CONFIG["senha"]}
     Click Button    id=kc-login
+    
+    Log To Console    STEP: Login concluído
 
 Salvar Dicionario Em CSV
     [Arguments]    &{HORAS_POR_DIA}
+
+    Log To Console    STEP: Gerando CSV
 
     ${arquivo}=    Set Variable    ${CONFIG["arquivos"]["csv_horas"]}
     ${conteudo}=    Set Variable    dia,data_inicial,data_final\n
@@ -100,6 +107,9 @@ Esperar Tela De Dias
 
 
 Coletar Horas Por Dia
+    
+    Log To Console    STEP: Extraindo dados
+
     &{HORAS_POR_DIA}=    Create Dictionary
 
     ${total_dias}=    Get Element Count
@@ -185,4 +195,7 @@ Teste Extrair Horas CCU
     
     &{HORAS_POR_DIA}=    Coletar Horas Por Dia
     Salvar Dicionario Em CSV    &{HORAS_POR_DIA}
+
+    Log To Console    STEP: CSV criado com sucesso
+
     Close Browser
