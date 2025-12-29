@@ -4,6 +4,7 @@ Library    OperatingSystem
 Library    Collections
 Library    Dialogs
 Library    libs/CryptoLibrary.py
+Resource   libs/RobotUtils.robot
 
 *** Variables ***
 
@@ -50,48 +51,6 @@ Buscar Painel Com Mes e Ano
         Click Element    xpath=//button[@id="mesAnterior"]
         Aguardar Desbloqueio
     END
-
-Abrir Navegador E Logar
-    Log To Console    STEP: Logando na intranet
-    IF    '${CONFIG["browser"]}' == 'chrome'
-        ${options}=    Evaluate
-        ...    sys.modules['selenium.webdriver'].ChromeOptions()    sys
-
-        IF    not ${DEBUG}
-            Call Method    ${options}    add_argument    --headless=new
-            Call Method    ${options}    add_argument    --disable-gpu
-            Call Method    ${options}    add_argument    --disable-extensions
-            Call Method    ${options}    add_argument    --disable-notifications
-            Call Method    ${options}    add_argument    --disable-infobars
-            Call Method    ${options}    add_argument    --disable-dev-shm-usage
-
-        END
-
-        Call Method    ${options}    add_argument    --window-size=1920,1080
-
-    ELSE IF    '${CONFIG["browser"]}' == 'firefox'
-        ${options}=    Evaluate
-        ...    sys.modules['selenium.webdriver'].FirefoxOptions()    sys
-
-        IF    not ${DEBUG}
-            Call Method    ${options}    add_argument    -headless
-            Call Method    ${options}    set_preference    dom.webnotifications.enabled    False
-            Call Method    ${options}    set_preference    media.autoplay.default    5
-        END
-    ELSE
-        Fail    Navegador inválido: ${CONFIG["browser"]}
-    END
-
-    Open Browser
-    ...    ${CONFIG["url"]}
-    ...    ${CONFIG["browser"]}
-    ...    options=${options}
-
-    Input Text      id=username    ${CONFIG["usuario"]}
-    Input Password  id=password    ${CONFIG["senha"]}
-    Click Button    id=kc-login
-    
-    Log To Console    STEP: Login concluído
 
 Salvar Dicionario Em CSV
     [Arguments]    &{HORAS_POR_DIA}
@@ -162,10 +121,10 @@ Coletar Horas Do Dia
     ...    xpath=//div[@id="ccuLancamentosCorpo"]//input[contains(@class,"hora")]
 
     ${horas_validas}=    Execute Javascript
-    ...    return [...document.querySelectorAll('#ccuLancamentosCorpo input.hora')]
+    ...    const vals = [...document.querySelectorAll('#ccuLancamentosCorpo input.hora')]
     ...      .map(e => e.value)
     ...      .filter(v => v);
-
+    ...    return vals.length ? [vals[0], vals[vals.length - 1]] : [];
 
     ${qtd_horas}=    Get Length    ${horas_validas}
 
@@ -195,7 +154,7 @@ Teste Extrair Horas CCU
 
     ${mes_ano}=    Esperar Input Do Usuario
     
-    Abrir Navegador E Logar
+    Abrir Navegador E Logar    ${CONFIG}    ${DEBUG}
     
     Esperar Tela De Dias
 
