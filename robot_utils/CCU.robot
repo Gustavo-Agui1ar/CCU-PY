@@ -3,17 +3,25 @@ Library    SeleniumLibrary
 Library    OperatingSystem
 Library    Collections
 Library    Dialogs
+Library    libs/CryptoLibrary.py
 
 *** Variables ***
 
 ${CONFIG}    None
 ${DEBUG}    False
+${ROOT}    ${CURDIR}/..
 
 *** Keywords ***
+
 Carregar Configuracoes
     ${json_text}=    Get File    ${CURDIR}/../configs/config.json
     ${CONFIG}=    Evaluate    json.loads($json_text)    json
+
+    ${senha_plana}=    Decrypt    ${CONFIG["senha"]}
+    Set To Dictionary    ${CONFIG}    senha=${senha_plana}
+
     Set Suite Variable    ${CONFIG}
+
 
 # Esperar Input Do Usuario
 #     ${mes_ano}=    Get Value From User    Digite o mês e ano no formato MM/YYYY para coletar as horas:
@@ -21,6 +29,11 @@ Carregar Configuracoes
 
 Esperar Input Do Usuario
     RETURN    12/2025
+
+Aguardar Desbloqueio
+    Wait Until Element Is Not Visible
+    ...    xpath=//div[contains(@class,"ccuBloqueio")]
+    ...    ${CONFIG["timeouts"]["bloqueio"]}
 
 Buscar Painel Com Mes e Ano
     [Arguments]    ${mes_ano}
@@ -30,14 +43,12 @@ Buscar Painel Com Mes e Ano
     ${painel_texto}=    Get Text
     ...    xpath=//strong[@id="ccuAnoMesAtual"]
 
-    WHILE    '${painel_texto}' != '${mes_ano}'
-        Click Element
-        ...    xpath=//button[@id="mesAnterior"]
+    WHILE    True
+        ${painel_texto}=    Get Text    xpath=//strong[@id="ccuAnoMesAtual"]
+        Exit For Loop If    '${painel_texto}' == '${mes_ano}'
 
-        Esperar Tela De Dias
-
-        ${painel_texto}=    Get Text
-        ...    xpath=//strong[@id="ccuAnoMesAtual"]
+        Click Element    xpath=//button[@id="mesAnterior"]
+        Aguardar Desbloqueio
     END
 
 Abrir Navegador E Logar
@@ -49,6 +60,11 @@ Abrir Navegador E Logar
         IF    not ${DEBUG}
             Call Method    ${options}    add_argument    --headless=new
             Call Method    ${options}    add_argument    --disable-gpu
+            Call Method    ${options}    add_argument    --disable-extensions
+            Call Method    ${options}    add_argument    --disable-notifications
+            Call Method    ${options}    add_argument    --disable-infobars
+            Call Method    ${options}    add_argument    --disable-dev-shm-usage
+
         END
 
         Call Method    ${options}    add_argument    --window-size=1920,1080
@@ -59,6 +75,8 @@ Abrir Navegador E Logar
 
         IF    not ${DEBUG}
             Call Method    ${options}    add_argument    -headless
+            Call Method    ${options}    set_preference    dom.webnotifications.enabled    False
+            Call Method    ${options}    set_preference    media.autoplay.default    5
         END
     ELSE
         Fail    Navegador inválido: ${CONFIG["browser"]}
@@ -68,8 +86,6 @@ Abrir Navegador E Logar
     ...    ${CONFIG["url"]}
     ...    ${CONFIG["browser"]}
     ...    options=${options}
-
-    Run Keyword If    ${DEBUG}    Maximize Browser Window
 
     Input Text      id=username    ${CONFIG["usuario"]}
     Input Password  id=password    ${CONFIG["senha"]}
@@ -101,9 +117,7 @@ Esperar Tela De Dias
     ...    xpath=//table[@id="ccuDias"]
     ...    ${CONFIG["timeouts"]["visibilidade"]}
 
-    Wait Until Element Is Not Visible
-    ...    xpath=//div[contains(@class,"ccuBloqueio")]
-    ...    ${CONFIG["timeouts"]["bloqueio"]}
+    Aguardar Desbloqueio
 
 
 Coletar Horas Por Dia
@@ -126,23 +140,17 @@ Coletar Horas Por Dia
 Processar Dia Por Indice
     [Arguments]    ${indice}
 
-    Wait Until Element Is Not Visible
-    ...    xpath=//div[contains(@class,"ccuBloqueio")]
-    ...    20s
+    Aguardar Desbloqueio
 
     ${dia}=    Get WebElement
     ...    xpath=(//table[@id="ccuDias"]//span[contains(@class, "ccuDia")])[${indice + 1}]
 
     ${dia_texto}=    Get Text    ${dia}
 
-    Scroll Element Into View    ${dia}
-    Wait Until Element Is Visible    ${dia}    10s
-    Wait Until Element Is Enabled    ${dia}    10s
-    Click Element    ${dia}
+    Click Element
+    ...    xpath=(//table[@id="ccuDias"]//span[contains(@class, "ccuDia")])[${indice + 1}]
 
-    Wait Until Element Is Not Visible
-    ...    xpath=//div[contains(@class,"ccuBloqueio")]
-    ...    20s
+    Aguardar Desbloqueio
 
     ${dados_dia}=    Coletar Horas Do Dia
 
@@ -153,14 +161,11 @@ Coletar Horas Do Dia
     ${horas}=    Get WebElements
     ...    xpath=//div[@id="ccuLancamentosCorpo"]//input[contains(@class,"hora")]
 
-    @{horas_validas}=    Create List
+    ${horas_validas}=    Execute Javascript
+    ...    return [...document.querySelectorAll('#ccuLancamentosCorpo input.hora')]
+    ...      .map(e => e.value)
+    ...      .filter(v => v);
 
-    FOR    ${h}    IN    @{horas}
-        ${valor}=    Get Element Attribute    ${h}    value
-        IF    '${valor}' != ''
-            Append To List    ${horas_validas}    ${valor}
-        END
-    END
 
     ${qtd_horas}=    Get Length    ${horas_validas}
 
@@ -181,6 +186,9 @@ Coletar Horas Do Dia
     RETURN    ${dados_dia}
 
 *** Test Cases ***
+Setup
+    Set Environment Variable    PYTHONPATH    ${ROOT}
+
 Teste Extrair Horas CCU
 
     Carregar Configuracoes
