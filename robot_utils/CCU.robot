@@ -58,13 +58,15 @@ Salvar Dicionario Em CSV
     Log To Console    STEP: Gerando CSV
 
     ${arquivo}=    Set Variable    ${CONFIG["arquivos"]["csv_horas"]}
-    ${conteudo}=    Set Variable    dia,data_inicial,data_final\n
+    ${conteudo}=    Set Variable    dia, data_inicial, inicio_intercalo, fim_intercalo, data_final\n
 
     FOR    ${dia}    IN    @{HORAS_POR_DIA.keys()}
         ${dados}=    Get From Dictionary    ${HORAS_POR_DIA}    ${dia}
         ${inicio}=   Get From Dictionary    ${dados}    hora_inicio
+        ${inicio_intercalo}=   Get From Dictionary    ${dados}    inicio_intercalo
+        ${fim_intercalo}=      Get From Dictionary    ${dados}    fim_intercalo    
         ${fim}=      Get From Dictionary    ${dados}    hora_fim
-        ${linha}=    Set Variable    ${dia},${inicio},${fim}\n
+        ${linha}=    Set Variable    ${dia},${inicio},${inicio_intercalo},${fim_intercalo},${fim}\n
         ${conteudo}=    Catenate    SEPARATOR=    ${conteudo}    ${linha}
     END
 
@@ -117,14 +119,12 @@ Processar Dia Por Indice
 
 
 Coletar Horas Do Dia
-    ${horas}=    Get WebElements
-    ...    xpath=//div[@id="ccuLancamentosCorpo"]//input[contains(@class,"hora")]
 
     ${horas_validas}=    Execute Javascript
-    ...    const vals = [...document.querySelectorAll('#ccuLancamentosCorpo input.hora')]
+    ...    const vals = [...document.querySelectorAll('#ccuLancamentos input.hora')]
     ...      .map(e => e.value)
     ...      .filter(v => v);
-    ...    return vals.length ? [vals[0], vals[vals.length - 1]] : [];
+    ...    return vals;
 
     ${qtd_horas}=    Get Length    ${horas_validas}
 
@@ -137,9 +137,19 @@ Coletar Horas Do Dia
     ...    ${qtd_horas} > 1
     ...    ${horas_validas}[-1]
     ...    ${EMPTY}
+    
+    ${inicio_intercalo}=      Set Variable  ${EMPTY}
+    ${fim_intercalo}=         Set Variable  ${EMPTY}
+    
+    IF    ${qtd_horas} == 4
+        ${inicio_intercalo}=    Set Variable    ${horas_validas}[1]
+        ${fim_intercalo}=       Set Variable    ${horas_validas}[-2]
+    END
 
     &{dados_dia}=    Create Dictionary
     ...    hora_inicio=${hora_inicio}
+    ...    inicio_intercalo=${inicio_intercalo}
+    ...    fim_intercalo=${fim_intercalo}
     ...    hora_fim=${hora_fim}
 
     RETURN    ${dados_dia}

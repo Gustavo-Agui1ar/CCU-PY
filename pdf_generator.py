@@ -58,9 +58,15 @@ def gerar_overlay(csv_path: str, pdf_overlay: str, configs: dict, on_progress=No
 
     position_y = START_Y
 
-    for i, (dia, entrada, saida) in enumerate(linhas):
+    for i, (dia, entrada, inicio_intercalo, fim_intercalo, saida) in enumerate(linhas):
         if entrada.strip():
             c.drawString(X_ENTRADA, position_y, entrada)
+
+        if inicio_intercalo.strip() and fim_intercalo.strip():
+            pos_intervalo_entrada = X_ENTRADA + abs(X_ENTRADA - X_SAIDA) / 3
+            pos_intervalo_saida = X_ENTRADA + 2 * abs(X_ENTRADA - X_SAIDA) / 3
+            c.drawString(pos_intervalo_entrada, position_y, inicio_intercalo)
+            c.drawString(pos_intervalo_saida, position_y, fim_intercalo)
 
         if saida.strip():
             c.drawString(X_SAIDA, position_y, saida)
