@@ -1,4 +1,4 @@
-* Settings *
+*** Settings ****
 Library    SeleniumLibrary
 Library    OperatingSystem
 Library    Collections
@@ -14,14 +14,7 @@ ${ROOT}    ${CURDIR}/..
 
 *** Keywords ***
 
-Carregar Configuracoes
-    ${json_text}=    Get File    ${CURDIR}/../configs/config.json
-    ${CONFIG}=    Evaluate    json.loads($json_text)    json
 
-    ${senha_plana}=    Decrypt    ${CONFIG["senha"]}
-    Set To Dictionary    ${CONFIG}    senha=${senha_plana}
-
-    Set Suite Variable    ${CONFIG}
 
 
 # Esperar Input Do Usuario
@@ -34,7 +27,7 @@ Esperar Input Do Usuario
 Aguardar Desbloqueio
     Wait Until Element Is Not Visible
     ...    xpath=//div[contains(@class,"ccuBloqueio")]
-    ...    ${CONFIG["timeouts"]["bloqueio"]}
+    ...    ${CONFIG["timeouts"]["visibilidade"]}
 
 Buscar Painel Com Mes e Ano
     [Arguments]    ${mes_ano}
@@ -74,6 +67,7 @@ Salvar Dicionario Em CSV
 
 
 Esperar Tela De Dias
+    
     Wait Until Page Contains Element
     ...    xpath=//table[@id="ccuDias"]
     ...    ${CONFIG["timeouts"]["visibilidade"]}
@@ -160,11 +154,12 @@ Setup
 
 Teste Extrair Horas CCU
 
-    Carregar Configuracoes
+    ${CONFIG}=     Carregar Configuracoes
+    Set Suite Variable    ${CONFIG}
 
     ${mes_ano}=    Esperar Input Do Usuario
     
-    Abrir Navegador E Logar    ${CONFIG}    ${DEBUG}
+    Abrir Navegador E Logar    ${CONFIG}    ${DEBUG}    URL=${CONFIG["url"]}
     
     Esperar Tela De Dias
 

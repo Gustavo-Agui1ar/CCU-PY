@@ -3,11 +3,17 @@
 Library    SeleniumLibrary
 Library    BuiltIn
 Library    OperatingSystem
+Library    Collections
+Library    CryptoLibrary.py
 
+
+*** Variables ***
+
+${ROOT}    ${CURDIR}/../..
 *** Keywords ***
 
 Abrir Navegador E Logar
-    [Arguments]    ${CONFIG}    ${DEBUG}
+    [Arguments]    ${CONFIG}    ${DEBUG}    ${URL}
 
     Log To Console    STEP: Logando na intranet
     
@@ -48,7 +54,7 @@ Abrir Navegador E Logar
     END
     
     Open Browser
-    ...    ${CONFIG["url"]}
+    ...    ${URL}
     ...    ${BROWSER}
     ...    options=${options}
     ...    service_log_path=${NONE}
@@ -58,3 +64,13 @@ Abrir Navegador E Logar
     Click Button    id=kc-login
 
     Log To Console    STEP: Login concluído
+
+Carregar Configuracoes
+    ${json_text}=    Get File    ${ROOT}/configs/config.json
+    ${config}=       Evaluate    json.loads($json_text)    json
+
+    ${senha_plana}=  Decrypt    ${config["senha"]}
+    Set To Dictionary    ${config}    senha=${senha_plana}
+
+    RETURN    ${config}
+
