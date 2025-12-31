@@ -17,7 +17,7 @@ from styles.style import (
 
 CONFIG_PATH = "configs/config.json"
 
-W, H = 100, 20
+W, H = 800, 200
 
 
 class SignatureState:
@@ -158,19 +158,31 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         height=H,
     )
 
+    container_canvas = ft.Container(
+        content=canvas,
+        border_radius=6,
+        width=W,
+        height=H,
+    )
+
+    label_espessura = ft.Text("Espessura do traço")
+
+    botao_limpar = ft.OutlinedButton(
+        "Limpar assinatura", 
+        on_click=limpar_assinatura
+    )
+
     assinatura_canvas = ft.Column(
+        width=W,
         controls=[
-            ft.Container(
-                content=canvas,
-                border=ft.Border(2, ft.Colors.GREY),
-                border_radius=6,
-                width=W,
-                height=H,
-            ),
-            ft.Text("Espessura do traço"),
-            slider_espessura,
-            ft.OutlinedButton("Limpar assinatura", on_click=limpar_assinatura),
+            container_canvas,  
+            ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
+            label_espessura,  
+            slider_espessura,  
+            botao_limpar,   
         ],
+        horizontal_alignment=ft.CrossAxisAlignment.START, 
+        spacing=5,
         visible=True,
     )
 
