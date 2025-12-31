@@ -4,7 +4,7 @@ import pdf_generator as pg
 import robot_utils.robot_runner as rr
 import utils.utils as utils
 import os
-from styles.style import TITLE_STYLE, PAGE_PADDING
+from styles.style import TITLE_STYLE, PAGE_PADDING # Mantendo as importações existentes
 
 
 BASE_WIDTH = 800
@@ -15,6 +15,7 @@ def relatorio_view(page: ft.Page) -> ft.Control:
     # ---------------- DIALOG ----------------
 
     def criar_dialog():
+        # Uso síncrono de page.close
         return ft.AlertDialog(
             modal=True,
             content=ft.Container(
@@ -37,6 +38,7 @@ def relatorio_view(page: ft.Page) -> ft.Control:
 
     dialog = criar_dialog()
 
+    # Função síncrona para mostrar o diálogo (page.open é síncrono nesta versão)
     def mostrar_dialog(titulo, mensagem, sucesso=True):
         icon, title, text = dialog.content.content.controls[:3]
 
@@ -46,14 +48,16 @@ def relatorio_view(page: ft.Page) -> ft.Control:
         title.value = titulo
         text.value = mensagem
 
-        page.open(dialog)
+        page.open(dialog) # Uso síncrono
 
     # ---------------- FILE PICKER ----------------
 
+    # Callback síncrono para o FilePicker (Assumindo comportamento síncrono para 0.28)
     def selecionar_diretorio(e: ft.FilePickerResultEvent):
         if not e.path:
             return
         try:
+            # Note: pg.PDF_SAIDA e os.path.basename dependem de variáveis/módulos externos
             destino = os.path.join(e.path, os.path.basename(pg.PDF_SAIDA))
             with open(pg.PDF_SAIDA, "rb") as o, open(destino, "wb") as s:
                 s.write(o.read())
@@ -70,7 +74,7 @@ def relatorio_view(page: ft.Page) -> ft.Control:
     progress_bar = ft.ProgressBar(width=420, visible=False)
 
     progress_container = ft.Container(
-        alignment=ft.alignment.center,
+        alignment=ft.Alignment(0, 0),
         visible=False,
         content=ft.Column(
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -78,16 +82,18 @@ def relatorio_view(page: ft.Page) -> ft.Control:
         ),
     )
 
+    # Função síncrona para atualizar a UI (Chamada de dentro da 'tarefa' assíncrona)
     def atualizar_progresso(msg, value):
         progress_text.value = msg
         progress_bar.value = value
-        page.update()
+        # page.update() deve ser chamado diretamente
+        page.update() 
 
     # ---------------- PDF VIEWER ----------------
 
     zoom = {"value": 1.0}
-    BASE_WIDTH = 800
-
+    
+    # Callback síncrono para o scroll
     def update_page_counter(e: ft.ScrollEvent):
         if not viewer_container.visible or not viewer_column.controls:
             return
@@ -100,7 +106,7 @@ def relatorio_view(page: ft.Page) -> ft.Control:
 
         current_page = max(1, min(current_page, total))
         contador_paginas.value = f"{current_page} / {total}"
-        page.update()
+        page.update() # Uso síncrono
 
 
     viewer_column = ft.Column(
@@ -113,7 +119,7 @@ def relatorio_view(page: ft.Page) -> ft.Control:
 
     viewer_container = ft.Container(
         expand=True,
-        alignment= ft.alignment.center,
+        alignment= ft.Alignment(0, 0),
         bgcolor=ft.Colors.GREY_300,
         padding=30,
         content=viewer_column,
@@ -125,64 +131,92 @@ def relatorio_view(page: ft.Page) -> ft.Control:
 
     # ---------------- AÇÕES ----------------
 
+    # Callback síncrono para o botão
     def gerar_e_mostrar(e):
         progress_container.visible = True
         progress_text.visible = True
         progress_bar.visible = True
         progress_bar.value = 0
-        page.update()
+        page.update() # Uso síncrono
 
+        # A lógica pesada é definida como uma tarefa assíncrona
         async def tarefa():
-
-            await asyncio.to_thread(rr.executar_robot, on_progress=atualizar_progresso)
-            await asyncio.to_thread(pg.main, on_progress=atualizar_progresso)
-
-            if not os.path.exists(pg.PDF_SAIDA):
+            try:
+                # O uso de asyncio.to_thread é o padrão para Flet 0.28 para 
+                # chamar funções síncronas de dentro de um contexto assíncrono
+                await asyncio.to_thread(rr.executar_robot, on_progress=atualizar_progresso)
+                await asyncio.to_thread(pg.main, on_progress=atualizar_progresso)
+            except Exception as ex:
+                mostrar_dialog("Erro de Execução", f"Falha durante a execução: {ex}", False)
+                progress_container.visible = False
+                page.update()
                 return
 
-            imagens, _ = utils.pdf_para_imagens(pg.PDF_SAIDA)
+            if not os.path.exists(pg.PDF_SAIDA):
+                # Usando mostrar_dialog (síncrono) para exibir o erro
+                mostrar_dialog("Erro", "O arquivo PDF de saída não foi encontrado.", False) 
+                progress_container.visible = False
+                page.update()
+                return
 
-            viewer_column.controls.clear()
-            contador_paginas.value = f"1 / {len(imagens)}"
+            try:
+                imagens, _ = await asyncio.to_thread(utils.pdf_para_imagens, pg.PDF_SAIDA)
 
-            for img_path in imagens:
-                viewer_column.controls.append(
-                    ft.Container(
-                        width=int(BASE_WIDTH * zoom["value"]),
-                        bgcolor=ft.Colors.WHITE,
-                        padding=12,
-                        border_radius=4,
-                        shadow=ft.BoxShadow(
-                            blur_radius=15,
-                            spread_radius=1,
-                            color=ft.Colors.BLACK26,
-                            offset=ft.Offset(0, 5),
-                        ),
-                        content=ft.Image(src=img_path, fit=ft.ImageFit.CONTAIN),
+                viewer_column.controls.clear()
+                contador_paginas.value = f"1 / {len(imagens)}"
+
+                for img_data_base64 in imagens:
+                    viewer_column.controls.append(
+                        ft.Container(
+                            width=int(BASE_WIDTH * zoom["value"]),
+                            bgcolor=ft.Colors.WHITE,
+                            padding=12,
+                            border_radius=4,
+                            shadow=ft.BoxShadow(
+                                blur_radius=15,
+                                spread_radius=1,
+                                color=ft.Colors.BLACK26,
+                                offset=ft.Offset(0, 5),
+                            ),
+                            content=ft.Image(
+                                src_base64=img_data_base64,
+                                fit=ft.ImageFit.CONTAIN
+                            ),
+                        )
                     )
-                )
 
-            progress_container.visible = False
-            viewer_container.visible = True
-            page.update()
+                progress_container.visible = False
+                viewer_container.visible = True
+                page.update()
+            
+            except Exception as ex:
+                mostrar_dialog("Erro de Visualização", f"Falha ao processar ou exibir o PDF: {ex}", False)
+                progress_container.visible = False
+                page.update()
 
+        # Inicia a tarefa assíncrona (Correto para 0.28)
         page.run_task(tarefa)
 
+    # Callback síncrono
     def baixar_pdf(e):
         if os.path.exists(pg.PDF_SAIDA):
             file_picker.get_directory_path()
+        else:
+            mostrar_dialog("Erro", "O PDF não foi gerado. Por favor, gere o relatório primeiro.", False)
 
+    # Callback síncrono
     def zoom_in(e):
         zoom["value"] += 0.1
         for container in viewer_column.controls:
             container.width = int(BASE_WIDTH * zoom["value"])
-        page.update()
+        page.update() # Uso síncrono
 
+    # Callback síncrono
     def zoom_out(e):
         zoom["value"] = max(0.1, zoom["value"] - 0.1)
         for container in viewer_column.controls:
             container.width = int(BASE_WIDTH * zoom["value"])
-        page.update()
+        page.update() # Uso síncrono
 
     # ---------------- TOOLBAR ----------------
 

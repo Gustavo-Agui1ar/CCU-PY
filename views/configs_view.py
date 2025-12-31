@@ -17,7 +17,7 @@ from styles.style import (
 
 CONFIG_PATH = "configs/config.json"
 
-W, H = 800, 200
+W, H = 100, 20
 
 
 class SignatureState:
@@ -44,9 +44,9 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         value="firefox",
         width=FIELD_WIDTH,
         options=[
-            ft.dropdown.Option("firefox"),
-            ft.dropdown.Option("chrome"),
-            ft.dropdown.Option("edge"),
+            ft.DropdownOption(key="firefox", text="Firefox"),
+            ft.DropdownOption(key="chrome", text="Chrome"),
+            ft.DropdownOption(key="edge", text="Edge"),
         ],
     )
 
@@ -162,7 +162,7 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         controls=[
             ft.Container(
                 content=canvas,
-                border=ft.border.all(2, ft.Colors.GREY),
+                border=ft.Border(2, ft.Colors.GREY),
                 border_radius=6,
                 width=W,
                 height=H,

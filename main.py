@@ -13,9 +13,11 @@ def main(page: ft.Page):
         print(f"Aviso: Não foi possível carregar o tema: {e}")
 
     content = ft.Container(expand=True)
-
+   
     def abrir_drawer(e):
-        page.open(page.drawer)
+        page.drawer.open = True
+        page.update()
+
 
     def trocar_view(index: int):
         if index == 0:
@@ -24,7 +26,7 @@ def main(page: ft.Page):
             content.content = configuracoes_view(page)
 
         page.drawer.selected_index = index
-        page.close(page.drawer)
+        page.drawer.open = False
         page.update()
    
     page.drawer = ft.NavigationDrawer(
@@ -58,4 +60,5 @@ def main(page: ft.Page):
     page.add(content)
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.app(target=main, view=ft.WEB_BROWSER)
+
