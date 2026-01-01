@@ -2,9 +2,18 @@ import flet as ft
 import flet.canvas as cv
 import json
 import os
+from utils.cripto_utils import CriptoUtils
 from PIL import Image, ImageDraw
 
-from styles.style import *
+from styles.style import (
+    PAGE_PADDING,
+    TITLE_STYLE,
+    BUTTON_WIDTH,
+    BUTTON_HEIGHT,
+    FIELD_WIDTH,
+    HALF_FIELD_WIDTH,
+    STATUS_SUCCESS,
+)
 
 CONFIG_PATH = "configs/config.json"
 
@@ -21,9 +30,9 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
     # =========================================================
     # CAMPOS BÁSICOS
     # =========================================================
-    url = ft.TextField(label="URL", width=FIELD_WIDTH)
-    usuario = ft.TextField(label="Usuário", width=FIELD_WIDTH)
-    senha = ft.TextField(
+    url_ccu = ft.TextField(label="URL", width=FIELD_WIDTH)
+    usuario_ccu = ft.TextField(label="Usuário", width=FIELD_WIDTH)
+    senha_ccu = ft.TextField(
         label="Senha",
         password=True,
         can_reveal_password=True,
@@ -67,6 +76,15 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         visible=False,
     )
 
+    url_email = ft.TextField(label="URL E-mail", width=FIELD_WIDTH)
+    usuario_email = ft.TextField(label="Usuário E-mail", width=FIELD_WIDTH)
+    senha_email = ft.TextField(
+        label="Senha E-mail",
+        password=True,
+        can_reveal_password=True,
+        width=FIELD_WIDTH,
+    )
+
     # =========================================================
     # ASSINATURA DESENHADA (CANVAS)
     # =========================================================
@@ -108,7 +126,7 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
 
     def limpar_assinatura(e):
         canvas.shapes.clear()
-        canvas.shapes.append(cv.Fill(ft.Paint(color=ft.Colors.WHITE)))
+        canvas.shapes.append(cv.Fill(ft.Paint(color=ft.Colors.GREY_500)))
         img.paste((0, 0, 0, 0), (0, 0, W, H))
         canvas.update()
 
@@ -130,7 +148,7 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
     )
 
     canvas = cv.Canvas(
-        shapes=[cv.Fill(ft.Paint(color=ft.Colors.WHITE))],
+        shapes=[cv.Fill(ft.Paint(color=ft.Colors.GREY_500))],
         content=ft.GestureDetector(
             on_pan_start=pan_start,
             on_pan_update=pan_update,
@@ -176,9 +194,9 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
             config = json.load(f)
 
-        url.value = config.get("url", "")
-        usuario.value = config.get("usuario", "")
-        senha.value = config.get("senha", "")
+        url_ccu.value = config.get("url", "")
+        usuario_ccu.value = config.get("usuario", "")
+        senha_ccu.value = CriptoUtils.decrypt(config.get("senha", ""))
         browser.value = config.get("browser", "firefox")
 
         timeouts = config.get("timeouts", {})
@@ -195,6 +213,11 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         assinatura_texto.visible = assinatura_tipo.value == "digitada"
         assinatura_canvas.visible = assinatura_tipo.value == "canvas"
 
+        email = config.get("email", {})
+        url_email.value = email.get("url_email", "")
+        usuario_email.value = email.get("usuario_email", "")
+        senha_email.value = CriptoUtils.decrypt(email.get("senha_email", ""))
+
     # =========================================================
     # SALVAR CONFIGURAÇÃO
     # =========================================================
@@ -203,9 +226,9 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
             salvar_assinatura()
 
         config = {
-            "url": url.value,
-            "usuario": usuario.value,
-            "senha": senha.value,
+            "url": url_ccu.value,
+            "usuario": usuario_ccu.value,
+            "senha": CriptoUtils.encrypt(senha_ccu.value),
             "browser": browser.value,
             "timeouts": {
                 "bloqueio": timeout_bloqueio.value,
@@ -218,6 +241,11 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
                 "tipo": assinatura_tipo.value,
                 "texto": assinatura_texto.value if assinatura_tipo.value == "digitada" else "",
                 "arquivo": "results/assinatura.png",
+            },
+            "email": {
+                "url_email": url_email.value,
+                "usuario_email": usuario_email.value,
+                "senha_email": CriptoUtils.encrypt(senha_email.value),
             },
         }
 
@@ -246,9 +274,9 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
             controls=[
                 ft.Text("Configurações", style=TITLE_STYLE),
 
-                url,
-                usuario,
-                senha,
+                url_ccu,
+                usuario_ccu,
+                senha_ccu,
                 browser,
 
                 ft.Text("Timeouts", weight=ft.FontWeight.BOLD),
@@ -260,10 +288,18 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
                 csv_horas,
 
                 ft.Divider(),
-                ft.Text("Assinatura", weight=ft.FontWeight.BOLD),
+                ft.Text("Configurações de E-mail", style=TITLE_STYLE),
+
+                url_email,
+                usuario_email,
+                senha_email,
+
+                ft.Divider(),
+                ft.Text("Assinatura", style=TITLE_STYLE),
                 assinatura_tipo,
                 assinatura_texto,
                 assinatura_canvas,
+
 
                 ft.ElevatedButton(
                     "Salvar",

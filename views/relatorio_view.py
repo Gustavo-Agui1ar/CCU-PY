@@ -1,3 +1,4 @@
+import asyncio
 import flet as ft
 import pdf_generator as pg
 import robot_utils.robot_runner as rr
@@ -131,10 +132,10 @@ def relatorio_view(page: ft.Page) -> ft.Control:
         progress_bar.value = 0
         page.update()
 
-        def tarefa():
+        async def tarefa():
 
-            rr.executar_robot(on_progress=atualizar_progresso)
-            pg.main(on_progress=atualizar_progresso)
+            await asyncio.to_thread(rr.executar_robot, on_progress=atualizar_progresso)
+            await asyncio.to_thread(pg.main, on_progress=atualizar_progresso)
 
             if not os.path.exists(pg.PDF_SAIDA):
                 return
@@ -165,7 +166,7 @@ def relatorio_view(page: ft.Page) -> ft.Control:
             viewer_container.visible = True
             page.update()
 
-        page.run_thread(tarefa)
+        page.run_task(tarefa)
 
     def baixar_pdf(e):
         if os.path.exists(pg.PDF_SAIDA):

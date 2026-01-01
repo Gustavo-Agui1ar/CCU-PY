@@ -1,19 +1,21 @@
-* Settings *
+*** Settings ****
 Library    SeleniumLibrary
 Library    OperatingSystem
 Library    Collections
 Library    Dialogs
+Library    libs/CryptoLibrary.py
+Resource   libs/RobotUtils.robot
 
 *** Variables ***
 
 ${CONFIG}    None
 ${DEBUG}    False
+${ROOT}    ${CURDIR}/..
 
 *** Keywords ***
-Carregar Configuracoes
-    ${json_text}=    Get File    ${CURDIR}/../configs/config.json
-    ${CONFIG}=    Evaluate    json.loads($json_text)    json
-    Set Suite Variable    ${CONFIG}
+
+
+
 
 # Esperar Input Do Usuario
 #     ${mes_ano}=    Get Value From User    Digite o mês e ano no formato MM/YYYY para coletar as horas:
@@ -21,6 +23,11 @@ Carregar Configuracoes
 
 Esperar Input Do Usuario
     RETURN    12/2025
+
+Aguardar Desbloqueio
+    Wait Until Element Is Not Visible
+    ...    xpath=//div[contains(@class,"ccuBloqueio")]
+    ...    ${CONFIG["timeouts"]["visibilidade"]}
 
 Buscar Painel Com Mes e Ano
     [Arguments]    ${mes_ano}
@@ -30,52 +37,13 @@ Buscar Painel Com Mes e Ano
     ${painel_texto}=    Get Text
     ...    xpath=//strong[@id="ccuAnoMesAtual"]
 
-    WHILE    '${painel_texto}' != '${mes_ano}'
-        Click Element
-        ...    xpath=//button[@id="mesAnterior"]
+    WHILE    True
+        ${painel_texto}=    Get Text    xpath=//strong[@id="ccuAnoMesAtual"]
+        Exit For Loop If    '${painel_texto}' == '${mes_ano}'
 
-        Esperar Tela De Dias
-
-        ${painel_texto}=    Get Text
-        ...    xpath=//strong[@id="ccuAnoMesAtual"]
+        Click Element    xpath=//button[@id="mesAnterior"]
+        Aguardar Desbloqueio
     END
-
-Abrir Navegador E Logar
-    Log To Console    STEP: Logando na intranet
-    IF    '${CONFIG["browser"]}' == 'chrome'
-        ${options}=    Evaluate
-        ...    sys.modules['selenium.webdriver'].ChromeOptions()    sys
-
-        IF    not ${DEBUG}
-            Call Method    ${options}    add_argument    --headless=new
-            Call Method    ${options}    add_argument    --disable-gpu
-        END
-
-        Call Method    ${options}    add_argument    --window-size=1920,1080
-
-    ELSE IF    '${CONFIG["browser"]}' == 'firefox'
-        ${options}=    Evaluate
-        ...    sys.modules['selenium.webdriver'].FirefoxOptions()    sys
-
-        IF    not ${DEBUG}
-            Call Method    ${options}    add_argument    -headless
-        END
-    ELSE
-        Fail    Navegador inválido: ${CONFIG["browser"]}
-    END
-
-    Open Browser
-    ...    ${CONFIG["url"]}
-    ...    ${CONFIG["browser"]}
-    ...    options=${options}
-
-    Run Keyword If    ${DEBUG}    Maximize Browser Window
-
-    Input Text      id=username    ${CONFIG["usuario"]}
-    Input Password  id=password    ${CONFIG["senha"]}
-    Click Button    id=kc-login
-    
-    Log To Console    STEP: Login concluído
 
 Salvar Dicionario Em CSV
     [Arguments]    &{HORAS_POR_DIA}
@@ -83,13 +51,15 @@ Salvar Dicionario Em CSV
     Log To Console    STEP: Gerando CSV
 
     ${arquivo}=    Set Variable    ${CONFIG["arquivos"]["csv_horas"]}
-    ${conteudo}=    Set Variable    dia,data_inicial,data_final\n
+    ${conteudo}=    Set Variable    dia, data_inicial, inicio_intercalo, fim_intercalo, data_final\n
 
     FOR    ${dia}    IN    @{HORAS_POR_DIA.keys()}
         ${dados}=    Get From Dictionary    ${HORAS_POR_DIA}    ${dia}
         ${inicio}=   Get From Dictionary    ${dados}    hora_inicio
+        ${inicio_intercalo}=   Get From Dictionary    ${dados}    inicio_intercalo
+        ${fim_intercalo}=      Get From Dictionary    ${dados}    fim_intercalo    
         ${fim}=      Get From Dictionary    ${dados}    hora_fim
-        ${linha}=    Set Variable    ${dia},${inicio},${fim}\n
+        ${linha}=    Set Variable    ${dia},${inicio},${inicio_intercalo},${fim_intercalo},${fim}\n
         ${conteudo}=    Catenate    SEPARATOR=    ${conteudo}    ${linha}
     END
 
@@ -97,13 +67,12 @@ Salvar Dicionario Em CSV
 
 
 Esperar Tela De Dias
+    
     Wait Until Page Contains Element
     ...    xpath=//table[@id="ccuDias"]
     ...    ${CONFIG["timeouts"]["visibilidade"]}
 
-    Wait Until Element Is Not Visible
-    ...    xpath=//div[contains(@class,"ccuBloqueio")]
-    ...    ${CONFIG["timeouts"]["bloqueio"]}
+    Aguardar Desbloqueio
 
 
 Coletar Horas Por Dia
@@ -126,23 +95,17 @@ Coletar Horas Por Dia
 Processar Dia Por Indice
     [Arguments]    ${indice}
 
-    Wait Until Element Is Not Visible
-    ...    xpath=//div[contains(@class,"ccuBloqueio")]
-    ...    20s
+    Aguardar Desbloqueio
 
     ${dia}=    Get WebElement
     ...    xpath=(//table[@id="ccuDias"]//span[contains(@class, "ccuDia")])[${indice + 1}]
 
     ${dia_texto}=    Get Text    ${dia}
 
-    Scroll Element Into View    ${dia}
-    Wait Until Element Is Visible    ${dia}    10s
-    Wait Until Element Is Enabled    ${dia}    10s
-    Click Element    ${dia}
+    Click Element
+    ...    xpath=(//table[@id="ccuDias"]//span[contains(@class, "ccuDia")])[${indice + 1}]
 
-    Wait Until Element Is Not Visible
-    ...    xpath=//div[contains(@class,"ccuBloqueio")]
-    ...    20s
+    Aguardar Desbloqueio
 
     ${dados_dia}=    Coletar Horas Do Dia
 
@@ -150,17 +113,12 @@ Processar Dia Por Indice
 
 
 Coletar Horas Do Dia
-    ${horas}=    Get WebElements
-    ...    xpath=//div[@id="ccuLancamentosCorpo"]//input[contains(@class,"hora")]
 
-    @{horas_validas}=    Create List
-
-    FOR    ${h}    IN    @{horas}
-        ${valor}=    Get Element Attribute    ${h}    value
-        IF    '${valor}' != ''
-            Append To List    ${horas_validas}    ${valor}
-        END
-    END
+    ${horas_validas}=    Execute Javascript
+    ...    const vals = [...document.querySelectorAll('#ccuLancamentos input.hora')]
+    ...      .map(e => e.value)
+    ...      .filter(v => v);
+    ...    return vals;
 
     ${qtd_horas}=    Get Length    ${horas_validas}
 
@@ -173,21 +131,35 @@ Coletar Horas Do Dia
     ...    ${qtd_horas} > 1
     ...    ${horas_validas}[-1]
     ...    ${EMPTY}
+    
+    ${inicio_intercalo}=      Set Variable  ${EMPTY}
+    ${fim_intercalo}=         Set Variable  ${EMPTY}
+    
+    IF    ${qtd_horas} == 4
+        ${inicio_intercalo}=    Set Variable    ${horas_validas}[1]
+        ${fim_intercalo}=       Set Variable    ${horas_validas}[-2]
+    END
 
     &{dados_dia}=    Create Dictionary
     ...    hora_inicio=${hora_inicio}
+    ...    inicio_intercalo=${inicio_intercalo}
+    ...    fim_intercalo=${fim_intercalo}
     ...    hora_fim=${hora_fim}
 
     RETURN    ${dados_dia}
 
 *** Test Cases ***
+Setup
+    Set Environment Variable    PYTHONPATH    ${ROOT}
+
 Teste Extrair Horas CCU
 
-    Carregar Configuracoes
+    ${CONFIG}=     Carregar Configuracoes
+    Set Suite Variable    ${CONFIG}
 
     ${mes_ano}=    Esperar Input Do Usuario
     
-    Abrir Navegador E Logar
+    Abrir Navegador E Logar    ${CONFIG}    ${DEBUG}    URL=${CONFIG["url"]}
     
     Esperar Tela De Dias
 
