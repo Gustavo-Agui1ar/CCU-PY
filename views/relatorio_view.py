@@ -91,7 +91,7 @@ def relatorio_view(page: ft.Page) -> ft.Control:
         if not viewer_container.visible or not viewer_column.controls:
             return
 
-        scroll_pos = e.pixels
+        scroll_pos = e.pixels 
         page_size = PAGE_HEIGHT_ESTIMADA + viewer_column.spacing
 
         current_page = int(scroll_pos // page_size) + 1
