@@ -1,21 +1,13 @@
 import subprocess
 import os
 import sys
+import time
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 ROBOT_DIR = BASE_DIR
 ROBOT_FILE = os.path.join(ROBOT_DIR, "CCU.robot")
 OUTPUT_DIR = os.path.join(ROBOT_DIR, "results")
-
-ROBOT_CMD = [
-    sys.executable,
-    "-m", "robot",
-    "--loglevel", "INFO",
-    "--console", "verbose",
-    "--outputdir", OUTPUT_DIR,
-    ROBOT_FILE,
-]
 
 PROGRESS_MAP = {
     "STEP: Logando na intranet": ("Logando na intranet", 0.15),
@@ -33,15 +25,26 @@ def report(cb, msg, value):
         cb(msg, value)
 
 
-def executar_robot(on_progress=None):
+def executar_robot(data_param: str, on_progress=None):
     report(on_progress, "Preparando execução do robô", 0.05)
 
     try:
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         report(on_progress, "Iniciando Robot Framework", 0.10)
 
+        robot_cmd = [
+            sys.executable,
+            "-m", "robot",
+            "--loglevel", "INFO",
+            "--console", "verbose",
+            "--outputdir", OUTPUT_DIR,
+            "--variable", f"DATA_PARAM:{data_param}",
+            ROBOT_FILE,
+        ]
+
+
         process = subprocess.Popen(
-            ROBOT_CMD,
+            robot_cmd,
             cwd=ROBOT_DIR,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -70,4 +73,4 @@ def executar_robot(on_progress=None):
 
 
 if __name__ == "__main__":
-    executar_robot()
+    executar_robot(time.strftime("%m/%Y"))

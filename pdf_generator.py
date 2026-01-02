@@ -6,7 +6,6 @@ from PyPDF2 import PdfReader, PdfWriter
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-PDF_ENTRADA = os.path.join(BASE_DIR, "pdfs", "entrada.pdf")
 PDF_OVERLAY = os.path.join(BASE_DIR, "pdfs", "overlay.pdf")
 PDF_SAIDA   = os.path.join(BASE_DIR, "pdfs", "saida.pdf")
 CSV_HORAS   = os.path.join(BASE_DIR, "results", "horas.csv")    
@@ -116,7 +115,7 @@ def merge_pdfs(pdf_base: str, pdf_overlay: str, pdf_saida: str, on_progress=None
     report(on_progress, "PDF finalizado", 1.0)
 
 
-def main(on_progress=None):
+def main(pdf_entrada: str, on_progress=None):
     report(on_progress, "Lendo configurações", 0.05)
 
     config = ler_config()
@@ -125,4 +124,5 @@ def main(on_progress=None):
     report(on_progress, "Lendo CSV de horas", 0.2)
 
     gerar_overlay(csv_path, PDF_OVERLAY, config, on_progress)
-    merge_pdfs(PDF_ENTRADA, PDF_OVERLAY, PDF_SAIDA, on_progress)
+    merge_pdfs(pdf_entrada, PDF_OVERLAY, PDF_SAIDA, on_progress)
+

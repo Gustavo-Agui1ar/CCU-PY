@@ -14,16 +14,6 @@ ${ROOT}    ${CURDIR}/..
 
 *** Keywords ***
 
-
-
-
-# Esperar Input Do Usuario
-#     ${mes_ano}=    Get Value From User    Digite o mês e ano no formato MM/YYYY para coletar as horas:
-#     RETURN    ${mes_ano}
-
-Esperar Input Do Usuario
-    RETURN    12/2025
-
 Aguardar Desbloqueio
     Wait Until Element Is Not Visible
     ...    xpath=//div[contains(@class,"ccuBloqueio")]
@@ -153,17 +143,15 @@ Setup
     Set Environment Variable    PYTHONPATH    ${ROOT}
 
 Teste Extrair Horas CCU
-
+    
     ${CONFIG}=     Carregar Configuracoes
     Set Suite Variable    ${CONFIG}
 
-    ${mes_ano}=    Esperar Input Do Usuario
-    
     Abrir Navegador E Logar    ${CONFIG}    ${DEBUG}    URL=${CONFIG["url"]}
     
     Esperar Tela De Dias
 
-    Buscar Painel Com Mes e Ano    ${mes_ano}
+    Buscar Painel Com Mes e Ano    ${DATA_PARAM}
     
     &{HORAS_POR_DIA}=    Coletar Horas Por Dia
     Salvar Dicionario Em CSV    &{HORAS_POR_DIA}

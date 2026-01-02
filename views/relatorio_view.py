@@ -5,10 +5,14 @@ import robot_utils.robot_runner as rr
 import utils.utils as utils
 import os
 from styles.style import TITLE_STYLE, PAGE_PADDING
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
 
 
 BASE_WIDTH = 800
 PAGE_HEIGHT_ESTIMADA = int(BASE_WIDTH * 1.35)
+pdf_entrada = {"path": None}
 
 def relatorio_view(page: ft.Page) -> ft.Control:
 
@@ -61,8 +65,16 @@ def relatorio_view(page: ft.Page) -> ft.Control:
         except Exception as ex:
             mostrar_dialog("Erro", str(ex), False)
 
+    def selecionar_pdf(e: ft.FilePickerResultEvent):
+        if not e.files:
+            return
+        pdf_entrada["path"] = e.files[0].path
+        mostrar_dialog("PDF selecionado", os.path.basename(pdf_entrada["path"]))
+
+    pdf_picker = ft.FilePicker(on_result=selecionar_pdf)
     file_picker = ft.FilePicker(on_result=selecionar_diretorio)
     page.overlay.append(file_picker)
+    page.overlay.append(pdf_picker)
 
     # ---------------- PROGRESSO ----------------
 
@@ -125,7 +137,38 @@ def relatorio_view(page: ft.Page) -> ft.Control:
 
     # ---------------- AÇÕES ----------------
 
+    def gerar_meses():
+        hoje = datetime.today()
+        meses = []
+        for i in range(0, 7):
+            d = hoje - relativedelta(months=i)
+            meses.append(d.strftime("%m/%Y"))
+        return meses
+
+    mes_selecionado = {"value": None}
+
+    mes_dropdown = ft.Dropdown(
+        width=200,
+        label="Mês/Ano",
+        options=[ft.dropdown.Option(m) for m in gerar_meses()],
+        value=gerar_meses()[0],
+        on_change=lambda e: mes_selecionado.update(value=e.control.value),
+    )
+
+    mes_selecionado["value"] = mes_dropdown.value
+
+
+
     def gerar_e_mostrar(e):
+
+        if not pdf_entrada["path"]:
+            mostrar_dialog(
+                "PDF não selecionado",
+                "Selecione um PDF de entrada antes de gerar o relatório.",
+                sucesso=False
+            )
+            return
+
         progress_container.visible = True
         progress_text.visible = True
         progress_bar.visible = True
@@ -134,8 +177,17 @@ def relatorio_view(page: ft.Page) -> ft.Control:
 
         async def tarefa():
 
-            await asyncio.to_thread(rr.executar_robot, on_progress=atualizar_progresso)
-            await asyncio.to_thread(pg.main, on_progress=atualizar_progresso)
+            await asyncio.to_thread(
+                rr.executar_robot,
+                mes_selecionado["value"],
+                on_progress=atualizar_progresso
+            )
+            
+            await asyncio.to_thread(
+                pg.main,
+                pdf_entrada=pdf_entrada["path"],
+                on_progress=atualizar_progresso
+            )
 
             if not os.path.exists(pg.PDF_SAIDA):
                 return
@@ -216,7 +268,15 @@ def relatorio_view(page: ft.Page) -> ft.Control:
         content=ft.Row(
             alignment=ft.MainAxisAlignment.CENTER,
             controls=[
-                ft.ElevatedButton("Gerar Relatório PDF", on_click=gerar_e_mostrar)
+                mes_dropdown,
+                ft.ElevatedButton("Gerar Relatório PDF", on_click=gerar_e_mostrar),
+                ft.ElevatedButton(
+                    "Selecionar PDF de Entrada",
+                    on_click=lambda e: pdf_picker.pick_files(
+                        allow_multiple=False,
+                        allowed_extensions=["pdf"]
+                    )
+                )
             ],
         ),
     )
