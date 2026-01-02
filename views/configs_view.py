@@ -44,9 +44,9 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         value="firefox",
         width=FIELD_WIDTH,
         options=[
-            ft.dropdown.Option("firefox"),
-            ft.dropdown.Option("chrome"),
-            ft.dropdown.Option("edge"),
+            ft.DropdownOption("firefox"),
+            ft.DropdownOption("chrome"),
+            ft.DropdownOption("edge"),
         ],
     )
 
@@ -162,7 +162,6 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         controls=[
             ft.Container(
                 content=canvas,
-                border=ft.border.all(2, ft.Colors.GREY),
                 border_radius=6,
                 width=W,
                 height=H,

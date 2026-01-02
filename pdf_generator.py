@@ -9,7 +9,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_ENTRADA = os.path.join(BASE_DIR, "pdfs", "entrada.pdf")
 PDF_OVERLAY = os.path.join(BASE_DIR, "pdfs", "overlay.pdf")
 PDF_SAIDA   = os.path.join(BASE_DIR, "pdfs", "saida.pdf")
-CSV_HORAS   = os.path.join(BASE_DIR, "results", "horas.csv")
+CSV_HORAS   = os.path.join(BASE_DIR, "results", "horas.csv")    
 CONFIG_PATH = os.path.join(BASE_DIR, "configs", "config.json")
 
 X_ENTRADA = 120
@@ -41,6 +41,32 @@ def ler_csv_horas(caminho_csv: str):
         for row in reader:
             yield row
 
+def get_configs_values(configs: dict) -> tuple:
+    assinatura_cfg = configs.get("assinatura", {})
+    tipo_assinatura = assinatura_cfg.get("tipo")
+    texto_assinatura = assinatura_cfg.get("texto", "")
+    caminho_assinatura = assinatura_cfg.get("arquivo", "")
+
+    return tipo_assinatura, texto_assinatura, caminho_assinatura
+
+def draw_assinatura(c: canvas.Canvas, tipo: str, texto: str, caminho: str, position_y: int):
+    if tipo == "digitada":
+        c.drawString(X_ASSINATURA, position_y, texto)
+    elif tipo == "canvas" and os.path.exists(caminho):
+        c.drawImage(caminho, X_ASSINATURA, position_y - 6, width=80, height=20, preserveAspectRatio=True, mask="auto")
+
+def draw_line(c: canvas.Canvas, entrada: str, inicio_intercalo: str, fim_intercalo: str, saida: str, position_y: int):
+    if entrada.strip():
+        c.drawString(X_ENTRADA, position_y, entrada)
+
+    if inicio_intercalo.strip() and fim_intercalo.strip():
+        pos_intervalo_entrada = X_ENTRADA + abs(X_ENTRADA - X_SAIDA) / 3
+        pos_intervalo_saida = X_ENTRADA + 2 * abs(X_ENTRADA - X_SAIDA) / 3
+        c.drawString(pos_intervalo_entrada, position_y, inicio_intercalo)
+        c.drawString(pos_intervalo_saida, position_y, fim_intercalo)
+
+    if saida.strip():
+        c.drawString(X_SAIDA, position_y, saida)
 
 def gerar_overlay(csv_path: str, pdf_overlay: str, configs: dict, on_progress=None):
     report(on_progress, "Gerando overlay do PDF", 0.4)
@@ -48,10 +74,7 @@ def gerar_overlay(csv_path: str, pdf_overlay: str, configs: dict, on_progress=No
     c = canvas.Canvas(pdf_overlay)
     c.setFont("Helvetica", FONT_SIZE)
 
-    assinatura_cfg = configs.get("assinatura", {})
-    tipo_assinatura = assinatura_cfg.get("tipo")
-    texto_assinatura = assinatura_cfg.get("texto", "")
-    caminho_assinatura = assinatura_cfg.get("arquivo", "")
+    tipo_assinatura, texto_assinatura, caminho_assinatura = get_configs_values(configs)
 
     linhas = list(ler_csv_horas(csv_path))
     total = len(linhas)
@@ -59,31 +82,11 @@ def gerar_overlay(csv_path: str, pdf_overlay: str, configs: dict, on_progress=No
     position_y = START_Y
 
     for i, (dia, entrada, inicio_intercalo, fim_intercalo, saida) in enumerate(linhas):
-        if entrada.strip():
-            c.drawString(X_ENTRADA, position_y, entrada)
-
-        if inicio_intercalo.strip() and fim_intercalo.strip():
-            pos_intervalo_entrada = X_ENTRADA + abs(X_ENTRADA - X_SAIDA) / 3
-            pos_intervalo_saida = X_ENTRADA + 2 * abs(X_ENTRADA - X_SAIDA) / 3
-            c.drawString(pos_intervalo_entrada, position_y, inicio_intercalo)
-            c.drawString(pos_intervalo_saida, position_y, fim_intercalo)
-
-        if saida.strip():
-            c.drawString(X_SAIDA, position_y, saida)
+        
+        draw_line(c, entrada, inicio_intercalo, fim_intercalo, saida, position_y)
 
         if saida.strip() and entrada.strip():
-            if tipo_assinatura == "digitada":
-                c.drawString(X_ASSINATURA, position_y, texto_assinatura)
-            elif tipo_assinatura == "canvas" and os.path.exists(caminho_assinatura):
-                c.drawImage(
-                    caminho_assinatura,
-                    X_ASSINATURA,
-                    position_y - 6,
-                    width=80,
-                    height=20,
-                    preserveAspectRatio=True,
-                    mask="auto"
-                )
+            draw_assinatura(c, tipo_assinatura, texto_assinatura, caminho_assinatura, position_y)
 
         position_y -= LINE_HEIGHT
 

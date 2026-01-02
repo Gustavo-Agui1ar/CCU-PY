@@ -70,7 +70,7 @@ def relatorio_view(page: ft.Page) -> ft.Control:
     progress_bar = ft.ProgressBar(width=420, visible=False)
 
     progress_container = ft.Container(
-        alignment=ft.alignment.center,
+        alignment=ft.Alignment(0, 0),
         visible=False,
         content=ft.Column(
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -113,7 +113,7 @@ def relatorio_view(page: ft.Page) -> ft.Control:
 
     viewer_container = ft.Container(
         expand=True,
-        alignment= ft.alignment.center,
+        alignment= ft.Alignment(0, 0),
         bgcolor=ft.Colors.GREY_300,
         padding=30,
         content=viewer_column,
