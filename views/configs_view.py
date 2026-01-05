@@ -46,7 +46,6 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         options=[
             ft.DropdownOption("firefox"),
             ft.DropdownOption("chrome"),
-            ft.DropdownOption("edge"),
         ],
     )
 
@@ -230,8 +229,8 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
             "senha": CriptoUtils.encrypt(senha_ccu.value),
             "browser": browser.value,
             "timeouts": {
-                "bloqueio": timeout_bloqueio.value,
-                "visibilidade": timeout_visibilidade.value,
+                "bloqueio": timeout_bloqueio.value + 's',
+                "visibilidade": timeout_visibilidade.value + 's',
             },
             "arquivos": {
                 "csv_horas": csv_horas.value
