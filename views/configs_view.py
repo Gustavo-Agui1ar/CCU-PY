@@ -15,6 +15,8 @@ from styles.style import (
     STATUS_SUCCESS,
 )
 
+from views.components.TimeField import TimeField
+
 CONFIG_PATH = "configs/config.json"
 
 W, H = 800, 200
@@ -53,6 +55,11 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
     timeout_visibilidade = ft.TextField(label="Timeout Visibilidade", width=HALF_FIELD_WIDTH)
 
     csv_horas = ft.TextField(label="CSV Horas", width=FIELD_WIDTH)
+
+    entrada_dt = TimeField(page, "Entrada")
+    saida_dt = TimeField(page, "Saída")
+
+    range_intervalo = ft.TextField(label="Range de Intervalo", width=FIELD_WIDTH)
 
     status = ft.Text()
 
@@ -198,8 +205,8 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         browser.value = config.get("browser", "firefox")
 
         timeouts = config.get("timeouts", {})
-        timeout_bloqueio.value = timeouts.get("bloqueio", "")
-        timeout_visibilidade.value = timeouts.get("visibilidade", "")
+        timeout_bloqueio.value = timeouts.get("bloqueio", "").rstrip('s')
+        timeout_visibilidade.value = timeouts.get("visibilidade", "").rstrip('s')
 
         arquivos = config.get("arquivos", {})
         csv_horas.value = arquivos.get("csv_horas", "")
@@ -216,6 +223,11 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
         usuario_email.value = email.get("usuario_email", "")
         senha_email.value = CriptoUtils.decrypt(email.get("senha_email", ""))
 
+        horarios = config.get("horarios", {})
+        entrada_dt.set_value(horarios.get("central_entrada"))
+        saida_dt.set_value(horarios.get("central_saida"))
+        range_intervalo.value = horarios.get("range_intervalo", "")
+        
     # =========================================================
     # SALVAR CONFIGURAÇÃO
     # =========================================================
@@ -245,6 +257,19 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
                 "usuario_email": usuario_email.value,
                 "senha_email": CriptoUtils.encrypt(senha_email.value),
             },
+            "horarios": {
+                "central_entrada": (
+                    entrada_dt.get_value().isoformat()
+                    if entrada_dt.get_value()
+                    else ""
+                ),
+                "central_saida": (
+                    saida_dt.get_value().isoformat()
+                    if saida_dt.get_value()
+                    else ""
+                ),
+                "range_intervalo": range_intervalo.value,
+            },
         }
 
         os.makedirs("configs", exist_ok=True)
@@ -270,13 +295,12 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
             spacing=20,
             scroll=ft.ScrollMode.AUTO,
             controls=[
-                ft.Text("Configurações", style=TITLE_STYLE),
+                ft.Text("Configurações CCU", style=TITLE_STYLE),
 
                 url_ccu,
                 usuario_ccu,
                 senha_ccu,
                 browser,
-
                 ft.Text("Timeouts", weight=ft.FontWeight.BOLD),
                 ft.Row(
                     spacing=20,
@@ -284,6 +308,16 @@ def configuracoes_view(page: ft.Page) -> ft.Control:
                 ),
 
                 csv_horas,
+
+                ft.Text("Configurações de Horário", style=TITLE_STYLE),
+                ft.Row(
+                    spacing=16,
+                    controls=[
+                        entrada_dt,
+                        saida_dt,
+                    ],
+                ),
+                range_intervalo,
 
                 ft.Divider(),
                 ft.Text("Configurações de E-mail", style=TITLE_STYLE),

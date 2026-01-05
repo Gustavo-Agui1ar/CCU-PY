@@ -9,7 +9,7 @@ Resource   libs/RobotUtils.robot
 *** Variables ***
 
 ${CONFIG}    None
-${DEBUG}    False
+${DEBUG}    True
 ${ROOT}    ${CURDIR}/..
 
 *** Keywords ***

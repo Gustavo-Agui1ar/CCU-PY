@@ -1,12 +1,16 @@
 import csv
 import json
 import os
+from calendar import monthrange
+from datetime import date
 from reportlab.pdfgen import canvas
 from PyPDF2 import PdfReader, PdfWriter
+from utils import utils
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 PDF_OVERLAY = os.path.join(BASE_DIR, "pdfs", "overlay.pdf")
+PDF_ENTRADA = os.path.join(BASE_DIR, "pdfs", "entrada.pdf")
 PDF_SAIDA   = os.path.join(BASE_DIR, "pdfs", "saida.pdf")
 CSV_HORAS   = os.path.join(BASE_DIR, "results", "horas.csv")    
 CONFIG_PATH = os.path.join(BASE_DIR, "configs", "config.json")
@@ -46,7 +50,11 @@ def get_configs_values(configs: dict) -> tuple:
     texto_assinatura = assinatura_cfg.get("texto", "")
     caminho_assinatura = assinatura_cfg.get("arquivo", "")
 
-    return tipo_assinatura, texto_assinatura, caminho_assinatura
+    horarios_cfg = configs.get("horarios", {})
+    valor_central_entrada = horarios_cfg.get("central_entrada", "09:00")
+    valor_central_saida = horarios_cfg.get("central_saida", "18:00")
+
+    return tipo_assinatura, texto_assinatura, caminho_assinatura, valor_central_entrada, valor_central_saida
 
 def draw_assinatura(c: canvas.Canvas, tipo: str, texto: str, caminho: str, position_y: int):
     if tipo == "digitada":
@@ -95,6 +103,46 @@ def gerar_overlay(csv_path: str, pdf_overlay: str, configs: dict, on_progress=No
     c.save()
     report(on_progress, "Overlay gerado", 0.85)
 
+def gerar_overlay_sem_csv(pdf_overlay: str, configs: dict, mes: int, ano: int, on_progress=None):
+    report(on_progress, "Gerando overlay do PDF (sem CSV)", 0.4)
+
+    c = canvas.Canvas(pdf_overlay)
+    c.setFont("Helvetica", FONT_SIZE)
+
+    tipo_assinatura, texto_assinatura, caminho_assinatura, valor_central_entrada, valor_central_saida = get_configs_values(configs)
+    minutos_range = int(range) if str(range).isdigit() else 0
+
+    hora_central_entrada = utils.parse_hora(valor_central_entrada)
+    hora_central_saida = utils.parse_hora(valor_central_saida)
+
+    dias_no_mes = monthrange(ano, mes)[1]
+
+    for dia in range(1, dias_no_mes + 1):
+
+        data = date(ano, mes, dia)
+
+        if(utils.is_weekend(data) or utils.is_feriado(data)):
+            continue
+        position_y = START_Y - (dia - 1) * LINE_HEIGHT
+
+        entrada_time = utils.jitter_time(hora_central_entrada, minutos_range)
+        saida_time = utils.jitter_time(hora_central_saida, minutos_range)
+
+        entrada = entrada_time.strftime("%H:%M")
+        saida = saida_time.strftime("%H:%M")
+
+        draw_line(c, entrada, "12:00", "14:00", saida, position_y)
+
+        if entrada.strip() and saida.strip():
+            draw_assinatura(
+                c,
+                tipo_assinatura,
+                texto_assinatura,
+                caminho_assinatura,
+                position_y,
+            )
+    c.save()
+    report(on_progress, "Overlay gerado", 0.85)
 
 def merge_pdfs(pdf_base: str, pdf_overlay: str, pdf_saida: str, on_progress=None):
     report(on_progress, "Mesclando PDFs", 0.9)
@@ -124,5 +172,15 @@ def main(pdf_entrada: str, on_progress=None):
     report(on_progress, "Lendo CSV de horas", 0.2)
 
     gerar_overlay(csv_path, PDF_OVERLAY, config, on_progress)
+    merge_pdfs(pdf_entrada, PDF_OVERLAY, PDF_SAIDA, on_progress)
+
+def main_sem_csv(pdf_entrada: str, mes: int, ano: int, on_progress=None):
+    report(on_progress, "Lendo configurações", 0.05)
+
+    config = ler_config()
+
+    report(on_progress, "Gerando overlay sem CSV", 0.2)
+
+    gerar_overlay_sem_csv(PDF_OVERLAY, config, mes, ano, on_progress)
     merge_pdfs(pdf_entrada, PDF_OVERLAY, PDF_SAIDA, on_progress)
 

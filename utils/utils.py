@@ -1,10 +1,36 @@
 import os
 import sys
 import tempfile
+import random
+from datetime import datetime, time, timedelta, date
 from pdf2image import convert_from_path
 from PIL import Image
 from typing import List
 
+feriados = set()
+
+def load_feriados():
+    """Carrega feriados do arquivo CSV e retorna um conjunto de datas"""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    feriados_path = os.path.join(base_dir, "..", "configs", "feriados.csv")
+
+    if not os.path.exists(feriados_path):
+        return feriados
+
+    with open(feriados_path, "r", encoding="utf-8") as f:
+        next(f)
+        for line in f:
+            parts = line.strip().split(",")
+            if parts:
+                try:
+                    d = datetime.fromisoformat(parts[0]).date()
+                    feriados.add(d)
+                except ValueError:
+                    continue
+    
+    print(f"Feriados carregados: {feriados}")
+
+    return feriados
 
 def juntar_imagens_em_uma(
     imagens: List[str],
@@ -112,3 +138,38 @@ def main():
 if __name__ == "__main__":
     main()
 
+def parse_hora(valor: str) -> time:
+    if not valor:
+        raise ValueError("Hora vazia")
+
+    valor = valor.strip()
+
+    if "T" in valor or " " in valor:
+        return datetime.fromisoformat(valor).time()
+
+    parts = valor.split(":")
+
+    if len(parts) >= 2:
+        h = int(parts[0])
+        m = int(parts[1])
+        return time(h, m)
+
+    raise ValueError(f"Formato de hora inválido: {valor}")
+
+def jitter_time(base: time, minutos_range: int) -> time:
+    base_dt = datetime.combine(datetime.today(), base)
+    delta = random.randint(-minutos_range, minutos_range)
+    return (base_dt + timedelta(minutes=delta)).time()
+
+def is_weekend(d: date) -> bool:
+    return d.weekday() >= 5
+
+def is_feriado(d: date) -> bool:
+    if feriados == set():
+        load_feriados()
+    if(d in feriados):
+        print(f"{d} é feriado.")
+    return d in feriados
+
+if feriados == set():
+    load_feriados()

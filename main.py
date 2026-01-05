@@ -4,11 +4,9 @@ import traceback
 import flet as ft
 
 from styles.theme import apply_theme
-
 from views.relatorio_view import relatorio_view
-
 from views.configs_view import configuracoes_view
-
+from views.relatorio_efetivado_view import relatorio_efetivado_view as relatorio_efetivado_view
 
 def main(page: ft.Page):
 
@@ -35,6 +33,8 @@ def main(page: ft.Page):
             if index == 0:
                 content.content = relatorio_view(page)
             elif index == 1:
+                content.content = relatorio_efetivado_view(page)
+            elif index == 2:
                 content.content = configuracoes_view(page)
 
             page.drawer.selected_index = index
@@ -52,6 +52,11 @@ def main(page: ft.Page):
                     icon=ft.Icons.PICTURE_AS_PDF_OUTLINED,
                     selected_icon=ft.Icons.PICTURE_AS_PDF,
                     label="Relatório",
+                ),
+                ft.NavigationDrawerDestination(
+                    icon=ft.Icons.PIE_CHART_OUTLINE,
+                    selected_icon=ft.Icons.PIE_CHART,
+                    label="Relatório Efetivado",
                 ),
                 ft.NavigationDrawerDestination(
                     icon=ft.Icons.SETTINGS_OUTLINED,
