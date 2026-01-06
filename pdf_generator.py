@@ -81,7 +81,7 @@ def gerar_overlay(csv_path: str, pdf_overlay: str, configs: dict, on_progress=No
     c = canvas.Canvas(pdf_overlay)
     c.setFont("Helvetica", FONT_SIZE)
 
-    tipo_assinatura, texto_assinatura, caminho_assinatura = get_configs_values(configs)
+    tipo_assinatura, texto_assinatura, caminho_assinatura, _, _ = get_configs_values(configs)
 
     linhas = list(ler_csv_horas(csv_path))
     total = len(linhas)
@@ -90,7 +90,7 @@ def gerar_overlay(csv_path: str, pdf_overlay: str, configs: dict, on_progress=No
 
     for i, (dia, entrada, inicio_intercalo, fim_intercalo, saida) in enumerate(linhas):
         
-        draw_line(c, entrada, inicio_intercalo, fim_intercalo, saida, position_y)
+        draw_line(c, entrada, "", "", saida, position_y)
 
         if saida.strip() and entrada.strip():
             draw_assinatura(c, tipo_assinatura, texto_assinatura, caminho_assinatura, position_y)

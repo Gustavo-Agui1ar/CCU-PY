@@ -136,9 +136,15 @@ class PdfViewer:
         if not pdf_path or not os.path.exists(pdf_path):
             return
 
-        picker = ft.FilePicker(on_result=lambda ev: self._save_pdf(ev, pdf_path))
-        self.page.overlay.append(picker)
-        picker.get_directory_path()
+        if not hasattr(self, "_file_picker"):
+            self._file_picker = ft.FilePicker(
+                on_result=lambda ev: self._save_pdf(ev, pdf_path)
+            )
+            self.page.overlay.append(self._file_picker)
+            self.page.update() 
+
+        self._file_picker.get_directory_path()
+
 
     # ---------------- INTERNOS ----------------
 
